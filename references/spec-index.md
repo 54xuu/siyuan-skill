@@ -10,6 +10,7 @@
 | **格式标准** | [format-standard.md](format-standard.md) | 内部链接、块语法、排版、嵌入块 | ⭐⭐⭐ |
 | **快速参考** | [quick-reference.md](quick-reference.md) | 命令决策表、ID类型区分、错误预防 | ⭐⭐⭐ |
 | **问题解决索引** | [troubleshooting.md](troubleshooting.md) | 按错误信息和任务场景的问题索引 | ⭐⭐⭐ |
+| **官方 API 对照** | [api-compatibility-audit.md](api-compatibility-audit.md) | API 一致性、未公开路由和未覆盖功能 | ⭐⭐ |
 
 ## 🔧 配置文档
 

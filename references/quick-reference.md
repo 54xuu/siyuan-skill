@@ -11,7 +11,7 @@
 | 读取文档内容 | `content.js` | `node scripts/content.js <docId>` |
 | 获取文档/块信息 | `info.js` | `node scripts/info.js <id> [--raw]` |
 | 创建文档 | `create.js` | `node scripts/create.js "标题" --parent-id <id>` 或 `--path <path>` |
-| 修改文档全文 | `update.js` | `node scripts/update.js <docId> --content "新内容"` |
+| 修改文档全文 | `update.js` | `node scripts/update.js <docId> --content "新内容"` 或 `--path "/笔记本/目录/文档名"` |
 | 删除文档 | `delete.js` | `node scripts/delete.js <docId>` |
 | 移动文档 | `move.js` | `node scripts/move.js <docId> --target <targetId>` |
 | 重命名文档 | `rename.js` | `node scripts/rename.js <docId> "新标题"` |

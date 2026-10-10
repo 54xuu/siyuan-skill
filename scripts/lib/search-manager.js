@@ -304,7 +304,7 @@ class SearchManager {
 
     const isConfigComplete = await this.isVectorSearchConfigComplete();
 
-    if (mode === 'semantic' || mode === 'keyword') {
+    if (mode === 'semantic') {
       if (!isConfigComplete) {
         throw new Error(`配置不完整，${mode} 搜索需要设置 QDRANT_URL 和 Ollama 相关配置`);
       }

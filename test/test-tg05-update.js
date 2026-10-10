@@ -368,6 +368,30 @@ const testCases = [
                     `部分检查失败: ${failedChecks}`
             };
         }
+    },
+    {
+        id: 'TG-05-015',
+        name: '按笔记本完整路径更新',
+        cmd: (docId) => {
+            const docPath = ctx.buildPath(ctx.getDocPath(docId));
+            return `update --path "${docPath}" --content "路径更新内容_${Date.now()}"`;
+        },
+        expected: '通过笔记本名称和文档路径更新指定文档',
+        execute: (docId) => {
+            const content = '路径更新内容_' + Date.now();
+            const docPath = ctx.buildPath(ctx.getDocPath(docId));
+            return { cmd: `update --path "${docPath}" --content "${content}"`, content };
+        },
+        verify: (docId, result, context) => {
+            if (!result.success) return { passed: false, details: result.error };
+            const actualContent = getDocContent(docId);
+            const content = context.execution?.content || '';
+            const passed = actualContent.includes(content);
+            return {
+                passed,
+                details: passed ? '路径定位的文档内容已更新' : '未在文档中找到路径更新内容'
+            };
+        }
     }
 ];
 

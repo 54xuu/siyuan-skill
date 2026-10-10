@@ -55,6 +55,7 @@ node scripts/content.js <docId>
 
 # 全文更新（注意：内容中不包含标题）
 node scripts/update.js <docId> --content "## 更新后的内容..."
+node scripts/update.js --path "/笔记本/目录/项目计划" --content "## 更新后的内容..."
 
 # 从文件更新
 node scripts/update.js <docId> --file updated.md

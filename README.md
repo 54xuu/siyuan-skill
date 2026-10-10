@@ -156,6 +156,7 @@ node scripts/create.js --path "/笔记本/目录/文档名" --content "内容"
 
 # 更新文档
 node scripts/update.js <docId> --content "新内容"
+node scripts/update.js --path "/笔记本/目录/文档名" --content "新内容"
 
 # 删除文档
 node scripts/delete.js <docId>

@@ -48,7 +48,7 @@ node {baseDir}/scripts/<command>.js --help  # 查看命令帮助
 | `content` | 获取文档内容 | `node {baseDir}/scripts/content.js <docId>` |
 | `info` | 获取文档/块信息 | `node {baseDir}/scripts/info.js <docId> [--raw]` |
 | `create` | 创建文档 | `node {baseDir}/scripts/create.js <title> --parent-id <id>` 或 `--path <path>` |
-| `update` | 更新文档 | `node {baseDir}/scripts/update.js <docId> --content <md>` |
+| `update` | 更新文档 | `node {baseDir}/scripts/update.js <docId> --content <md>` 或 `--path <path>` |
 | `delete` | 删除文档 | `node {baseDir}/scripts/delete.js <docId>` |
 | `move` | 移动文档 | `node {baseDir}/scripts/move.js <docId\|path> --target <notebookId\|path>` |
 | `rename` | 重命名文档 | `node {baseDir}/scripts/rename.js <docId> <title>` |

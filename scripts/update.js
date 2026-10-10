@@ -3,13 +3,13 @@
  * update.js - 更新文档内容
  * 
  * 功能说明：
- * - 更新 Siyuan Notes 中的文档内容（仅接受文档ID）
+ * - 更新 Siyuan Notes 中的文档内容（支持文档ID或笔记本路径）
  * - 提供文档ID验证，确保只更新文档而非子块
  * - 支持多种内容输入方式（命令行、文件、stdin）
  * - 自动处理内容中的转义字符
  * 
  * 限制说明：
- * - 只接受文档ID（type='d'）
+ * - 只接受文档ID（type='d'），不接受块ID
  * - 不接受块ID，块更新请使用 block-update 命令
  */
 const SiyuanConnector = require('./lib/connector');
@@ -19,8 +19,9 @@ const { parseArgs } = require('./lib/args-parser');
 const fs = require('fs');
 
 const HELP_TEXT = `用法: update <docId> [content] [选项]
+     update --path <path> [content] [选项]
 
-更新 Siyuan Notes 中的文档内容（仅接受文档ID）
+更新 Siyuan Notes 中的文档内容（仅接受文档ID，或通过 --path 定位文档）
 
 位置参数:
   docId                   文档ID
@@ -29,16 +30,19 @@ const HELP_TEXT = `用法: update <docId> [content] [选项]
 选项:
   -c, --content <text>    新内容
   -f, --file <path>       从文件读取内容
+  -P, --path <path>       文档路径（如 /jeff/目录/文档；与 docId 二选一）
   --data-type <type>      数据类型：markdown（默认）/dom
   -h, --help              显示帮助信息
 
 示例:
   update <id> "新内容"
   update <id> --file ./content.md
+  update --path "/jeff/目录/文档" --content "新内容"
   update <id> -c "内容" --data-type markdown
 
 限制:
   - 仅接受文档ID，不接受块ID
+  - 路径必须唯一匹配到一个文档；路径可包含笔记本名称或ID
   - 如果传入块ID，将返回错误提示使用 block-update 命令
 
 ⚠️ 格式规范：更新内容时请遵循内部链接格式 ((id "文本"))
@@ -61,28 +65,81 @@ function processContent(content) {
  */
 async function validateDocId(connector, id) {
   try {
-    const blockInfo = await connector.request('/api/block/getBlockInfo', { id });
-    
-    if (!blockInfo) {
+    if (!/^\d{14}-[a-z0-9]{7}$/.test(id)) {
+      return { isDoc: false, error: '无效的思源块ID格式' };
+    }
+
+    const pathInfo = await connector.request('/api/filetree/getPathByID', { id });
+    if (!pathInfo || !pathInfo.notebook || !pathInfo.path) {
       return { isDoc: false, error: '无法获取文档信息，请检查ID是否正确' };
     }
-    
-    if (blockInfo.rootID === id && blockInfo.path && blockInfo.path.endsWith('.sy')) {
-      return { isDoc: true, docInfo: blockInfo };
-    }
-    
-    if (blockInfo.rootID !== id) {
+
+    const storagePath = String(pathInfo.path).replace(/\\/g, '/');
+    if (!storagePath.endsWith(`/${id}.sy`)) {
       return { 
         isDoc: false, 
         error: `传入的ID是子块，不是文档。请使用 block-update 命令更新块内容`,
-        docInfo: blockInfo
+        docInfo: { box: pathInfo.notebook, path: pathInfo.path }
       };
     }
-    
-    return { isDoc: true, docInfo: blockInfo };
+
+    return {
+      isDoc: true,
+      docInfo: { box: pathInfo.notebook, path: pathInfo.path, type: 'd' }
+    };
   } catch (error) {
     return { isDoc: false, error: `验证文档ID失败: ${error.message}` };
   }
+}
+
+/**
+ * Resolve a human-readable document path to one document ID.
+ * The first path component may be a notebook name or ID. Otherwise the
+ * configured default notebook is used and the full path is notebook-relative.
+ */
+async function resolveDocumentPath(connector, path, defaultNotebook) {
+  const parts = String(path || '').split('/').filter(Boolean);
+  if (parts.length === 0) {
+    throw new Error('文档路径不能为空');
+  }
+
+  const notebookResult = await connector.request('/api/notebook/lsNotebooks');
+  const notebooks = notebookResult && Array.isArray(notebookResult.notebooks)
+    ? notebookResult.notebooks
+    : [];
+  const matchedNotebook = notebooks.find(notebook =>
+    notebook.name === parts[0] || notebook.id === parts[0]
+  );
+
+  let notebookId;
+  let relativeParts;
+  if (matchedNotebook) {
+    notebookId = matchedNotebook.id;
+    relativeParts = parts.slice(1);
+  } else {
+    notebookId = defaultNotebook;
+    relativeParts = parts;
+  }
+
+  if (!notebookId) {
+    throw new Error(`路径首段 "${parts[0]}" 不是笔记本名称或ID，且未配置默认笔记本`);
+  }
+  if (relativeParts.length === 0) {
+    throw new Error('路径指向笔记本根目录，不是文档');
+  }
+
+  const ids = await connector.request('/api/filetree/getIDsByHPath', {
+    notebook: notebookId,
+    path: '/' + relativeParts.join('/')
+  });
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new Error('找不到指定路径的文档');
+  }
+  if (ids.length > 1) {
+    throw new Error(`路径匹配到 ${ids.length} 个文档，请提供笔记本名称并确保路径唯一`);
+  }
+
+  return { id: ids[0], notebookId };
 }
 
 /**
@@ -119,8 +176,8 @@ function readFromStdin() {
 async function main() {
   const args = process.argv.slice(2);
   const { options, positionalArgs } = parseArgs(args, {
-    hasValueOpts: ['content', 'file', 'data-type'],
-    shortOpts: { c: 'content', f: 'file' }
+    hasValueOpts: ['content', 'file', 'data-type', 'path'],
+    shortOpts: { c: 'content', f: 'file', P: 'path' }
   });
 
   if (options.help) {
@@ -135,8 +192,12 @@ async function main() {
   }
   const params = options;
 
-  if (!params.docId) {
-    console.error('错误: 缺少必需的文档ID参数');
+  if (params.docId && params.path) {
+    console.error('错误: docId 和 --path 参数只能二选一');
+    process.exit(1);
+  }
+  if (!params.docId && !params.path) {
+    console.error('错误: 必须提供文档ID或 --path 参数');
     console.log(HELP_TEXT);
     process.exit(1);
   }
@@ -144,6 +205,11 @@ async function main() {
   try {
     const connector = SiyuanConnector.get();
     const config = connector.getConfig();
+
+    if (params.path) {
+      const resolved = await resolveDocumentPath(connector, params.path, config.defaultNotebook);
+      params.docId = resolved.id;
+    }
 
     let content = params.content;
 
